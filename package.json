@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build && npx playwright install chromium --with-deps",
+    "build": "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 next build",
     "start": "next start",
     "lint": "next lint",
     "test:login": "node scripts/login-test.js",
     "test:login:headed": "node scripts/login-test.js --headed",
-    "test:setup": "npx playwright install chromium"
+    "test:setup": "npx playwright install chromium",
+    "postinstall": "npx playwright install chromium --with-deps"
   },
   "dependencies": {
     "cloudinary": "^2.7.0",
