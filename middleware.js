@@ -4,8 +4,15 @@ import { getCorsHeaders } from './lib/cors-config.js';
 export function middleware(request) {
   // Handle CORS for all API routes
   if (request.nextUrl.pathname.startsWith('/api/')) {
-    const origin = request.headers.get('origin');
-    const corsHeaders = getCorsHeaders(origin);
+    // Allow all origins
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-Site-ID, X-API-Key, Cache-Control, Pragma, Accept, Accept-Language, Origin, User-Agent, Referer, Connection, Keep-Alive',
+      'Access-Control-Max-Age': '86400',
+      'Access-Control-Allow-Credentials': 'true',
+      'Vary': 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers'
+    };
     
     // Handle preflight OPTIONS requests
     if (request.method === 'OPTIONS') {
