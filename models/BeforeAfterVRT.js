@@ -4,8 +4,7 @@ const beforeAfterVRTSchema = new mongoose.Schema({
     automationId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Automation',
-        required: true,
-        index: true
+        required: true
     },
     
     siteUrl: {
@@ -116,9 +115,8 @@ const beforeAfterVRTSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Index for efficient querying
-beforeAfterVRTSchema.index({ automationId: 1 });
-beforeAfterVRTSchema.index({ projectId: 1 });
+// Create compound index for efficient querying
+beforeAfterVRTSchema.index({ automationId: 1 }, { unique: true }); // One VRT record per automation
 
 const BeforeAfterVRT = mongoose.models.BeforeAfterVRT || mongoose.model('BeforeAfterVRT', beforeAfterVRTSchema);
 

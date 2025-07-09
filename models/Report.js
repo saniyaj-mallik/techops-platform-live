@@ -6,8 +6,7 @@ const ReportSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Automation', 
     required: true, 
-    unique: true,
-    index: true 
+    unique: true
   },
   
   // Basic info
@@ -142,11 +141,10 @@ ReportSchema.virtual('successRate').get(function() {
   return totalTasks > 0 ? Math.round((successfulTasks / totalTasks) * 100) : 0;
 });
 
-// Index for efficient queries
-ReportSchema.index({ projectId: 1, generatedAt: -1 });
-ReportSchema.index({ siteUrl: 1, generatedAt: -1 });
-ReportSchema.index({ status: 1 });
-ReportSchema.index({ 'results.functionalityTest.status': 1 });
+// Create compound indexes for efficient querying
+ReportSchema.index({ automationId: 1 }, { unique: true }); // Single automation can have only one report
+ReportSchema.index({ projectId: 1, generatedAt: -1 }); // For listing reports by project, sorted by date
+ReportSchema.index({ siteUrl: 1, status: 1 }); // For filtering reports by site and status
 
 // Ensure virtual fields are serialized
 ReportSchema.set('toJSON', { virtuals: true });

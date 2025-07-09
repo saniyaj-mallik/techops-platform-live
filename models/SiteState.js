@@ -34,8 +34,7 @@ const SiteStateSchema = new mongoose.Schema({
   stateType: { 
     type: String, 
     enum: ['before', 'after'], 
-    required: true,
-    index: true
+    required: true
   },
   
   // Additional state info
@@ -50,10 +49,8 @@ const SiteStateSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Index for efficient queries
-SiteStateSchema.index({ siteUrl: 1, timestamp: -1 });
-SiteStateSchema.index({ automationId: 1 });
-SiteStateSchema.index({ stateType: 1, timestamp: -1 });
-SiteStateSchema.index({ automationId: 1, stateType: 1 });
+// Create compound indexes for efficient querying
+SiteStateSchema.index({ automationId: 1, stateType: 1 }); // For finding states of an automation
+SiteStateSchema.index({ siteUrl: 1, timestamp: -1 }); // For finding states by site, sorted by time
 
 export default mongoose.models.SiteState || mongoose.model('SiteState', SiteStateSchema); 

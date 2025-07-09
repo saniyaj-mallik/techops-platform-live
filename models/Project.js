@@ -75,16 +75,10 @@ ProjectSchema.pre('save', function(next) {
 ProjectSchema.set('toJSON', { virtuals: true });
 ProjectSchema.set('toObject', { virtuals: true });
 
-// Index for efficient queries
-ProjectSchema.index({ name: 1 });
-ProjectSchema.index({ stagingSiteUrl: 1 });
-ProjectSchema.index({ liveSiteUrl: 1 });
-ProjectSchema.index({ 'stagingSiteMap.pageSitemapUrl': 1 });
-ProjectSchema.index({ 'stagingSiteMap.postSitemapUrl': 1 });
-ProjectSchema.index({ 'liveSiteMap.pageSitemapUrl': 1 });
-ProjectSchema.index({ 'liveSiteMap.postSitemapUrl': 1 });
-ProjectSchema.index({ 'stagingSiteUrls.lastFetched': -1 });
-ProjectSchema.index({ 'liveSiteUrls.lastFetched': -1 });
+// Create compound indexes for efficient querying
+ProjectSchema.index({ name: 1 }); // For project name lookups
+ProjectSchema.index({ stagingSiteUrl: 1 }, { sparse: true }); // For finding projects by staging URL
+ProjectSchema.index({ liveSiteUrl: 1 }, { sparse: true }); // For finding projects by live URL
 
 // Replace the export with the safe pattern to avoid OverwriteModelError
 export default mongoose.models.Project || mongoose.model('Project', ProjectSchema); 

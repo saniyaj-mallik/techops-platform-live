@@ -104,13 +104,10 @@ AutomationSchema.pre('save', function(next) {
 AutomationSchema.set('toJSON', { virtuals: true });
 AutomationSchema.set('toObject', { virtuals: true });
 
-// Index for efficient queries
-AutomationSchema.index({ siteUrl: 1, createdAt: -1 });
-AutomationSchema.index({ projectId: 1, createdAt: -1 });
-AutomationSchema.index({ projectName: 1, createdAt: -1 });
-AutomationSchema.index({ status: 1 });
-AutomationSchema.index({ beforeState: 1 });
-AutomationSchema.index({ afterState: 1 });
+// Create compound indexes for efficient querying
+AutomationSchema.index({ projectId: 1, createdAt: -1 }); // For listing automations by project
+AutomationSchema.index({ siteUrl: 1, status: 1 }); // For filtering automations by site and status
+AutomationSchema.index({ beforeState: 1, afterState: 1 }); // For state tracking
 
 // Replace the export with the safe pattern to avoid OverwriteModelError
 export default mongoose.models.Automation || mongoose.model('Automation', AutomationSchema); 
