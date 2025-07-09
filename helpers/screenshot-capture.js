@@ -26,10 +26,9 @@ export async function captureAndUploadScreenshot(url, options = {}) {
     let page = null;
 
     try {
-        // Launch browser with more resilient configuration
-        browser = await chromium.launch({
+        // Try different browser launch configurations
+        const launchOptions = {
             headless: true,
-            executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -38,19 +37,42 @@ export async function captureAndUploadScreenshot(url, options = {}) {
                 '--no-first-run',
                 '--no-zygote',
                 '--disable-gpu',
-                '--single-process',  // Run browser in single process mode
+                '--single-process',
                 '--disable-extensions',
-                '--disable-software-rasterizer'
+                '--disable-software-rasterizer',
+                '--font-render-hinting=none' // Reduce font rendering differences
             ],
-            timeout: 60000  // 60 second timeout for browser launch
-        });
+            timeout: 60000
+        };
+
+        // Try different browser launch strategies
+        try {
+            // First try: Use system chrome if available
+            browser = await chromium.launch({
+                ...launchOptions,
+                channel: 'chrome'
+            });
+        } catch (err1) {
+            console.log('System Chrome not available, trying bundled browser...');
+            try {
+                // Second try: Use bundled browser with explicit path
+                browser = await chromium.launch({
+                    ...launchOptions,
+                    executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || '/ms-playwright/chromium-1060/chrome-linux/chrome'
+                });
+            } catch (err2) {
+                console.log('Bundled browser failed, trying default launch...');
+                // Final try: Let Playwright handle it
+                browser = await chromium.launch(launchOptions);
+            }
+        }
 
         // Create context with mobile user agent and reasonable viewport
         context = await browser.newContext({
             viewport: { width: 1920, height: 1080 },
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            bypassCSP: true,  // Bypass Content Security Policy
-            ignoreHTTPSErrors: true  // Ignore HTTPS errors
+            bypassCSP: true,
+            ignoreHTTPSErrors: true
         });
 
         // Create page

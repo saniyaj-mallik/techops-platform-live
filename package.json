@@ -5,12 +5,12 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 next build",
-    "start": "next start",
+    "start": "playwright install chromium && next start",
     "lint": "next lint",
     "test:login": "node scripts/login-test.js",
     "test:login:headed": "node scripts/login-test.js --headed",
     "test:setup": "npx playwright install chromium",
-    "postinstall": "npx playwright install chromium --with-deps"
+    "postinstall": "playwright install chromium"
   },
   "dependencies": {
     "cloudinary": "^2.7.0",
@@ -21,14 +21,14 @@
     "pixelmatch": "^7.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "sharp": "^0.34.2"
+    "sharp": "^0.34.2",
+    "playwright": "^1.41.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
-    "playwright": "^1.41.0",
     "tailwindcss": "^4"
   }
 }
