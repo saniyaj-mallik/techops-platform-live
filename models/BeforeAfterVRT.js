@@ -4,7 +4,8 @@ const beforeAfterVRTSchema = new mongoose.Schema({
     automationId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Automation',
-        required: true
+        required: true,
+        index: false  // Explicitly disable schema-level index since we use schema.index()
     },
     
     siteUrl: {

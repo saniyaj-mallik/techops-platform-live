@@ -2,20 +2,33 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongoose';
 import TestResult from '@/models/TestResult';
 
+export const dynamic = 'force-dynamic'; // Disable static optimization for this route
+export const maxDuration = 60; // Set maximum duration to 60 seconds
+
 export async function GET() {
   try {
     await connectDB();
-    // Get last 10 test results from DB, newest first
-    const results = await TestResult.find({})
-      .sort({ timestamp: -1 })
-      .limit(10)
-      .lean();
+    
+    // Set timeout for database operations
+    const timeout = 30000; // 30 seconds
+    
+    // Run queries in parallel for better performance
+    const [results, total, passed, failed] = await Promise.all([
+      TestResult.find({})
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .lean()
+        .maxTimeMS(timeout),
+      TestResult.countDocuments().maxTimeMS(timeout),
+      TestResult.countDocuments({ type: 'Success' }).maxTimeMS(timeout),
+      TestResult.countDocuments({ type: 'Failure' }).maxTimeMS(timeout)
+    ]);
 
     // Prepare stats
     const stats = {
-      total: await TestResult.countDocuments(),
-      passed: await TestResult.countDocuments({ type: 'Success' }),
-      failed: await TestResult.countDocuments({ type: 'Failure' })
+      total,
+      passed,
+      failed
     };
 
     // Get latest test result info
@@ -32,10 +45,34 @@ export async function GET() {
       lastRun,
       results,
       stats
+    }, {
+      headers: {
+        // Add cache control headers
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     });
   } catch (error) {
+    console.error('Test results API error:', error);
+    
+    // Handle specific error types
+    if (error.name === 'MongooseError' && error.message.includes('timeout')) {
+      return NextResponse.json({
+        error: 'Request timed out. Please try again.',
+        lastRun: null,
+        results: [],
+        stats: { total: 0, passed: 0, failed: 0 }
+      }, { 
+        status: 504,
+        headers: {
+          'Retry-After': '5'
+        }
+      });
+    }
+    
     return NextResponse.json({
-      error: error.message,
+      error: 'Failed to fetch test results. Please try again later.',
       lastRun: null,
       results: [],
       stats: { total: 0, passed: 0, failed: 0 }

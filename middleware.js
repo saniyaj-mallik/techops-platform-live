@@ -11,12 +11,25 @@ export function middleware(request) {
     if (request.method === 'OPTIONS') {
       return new NextResponse(null, {
         status: 200,
-        headers: corsHeaders,
+        headers: {
+          ...corsHeaders,
+          // Add cache headers to reduce preflight requests
+          'Cache-Control': 'public, max-age=3600',
+          'Vary': 'Origin'
+        }
       });
     }
 
-    // Continue to the API route
-    const response = NextResponse.next();
+    // Continue to the API route with increased timeout
+    const response = NextResponse.next({
+      request: {
+        headers: new Headers({
+          ...request.headers,
+          'Connection': 'keep-alive',
+          'Keep-Alive': 'timeout=60'  // 60 second timeout
+        })
+      }
+    });
     
     // Add CORS headers to all API responses
     Object.entries(corsHeaders).forEach(([key, value]) => {
@@ -37,7 +50,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - public files (public folder)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
   ],
 }; 

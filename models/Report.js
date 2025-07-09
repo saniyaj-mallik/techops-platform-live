@@ -5,8 +5,7 @@ const ReportSchema = new mongoose.Schema({
   automationId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Automation', 
-    required: true, 
-    unique: true
+    required: true
   },
   
   // Basic info
