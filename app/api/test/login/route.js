@@ -11,11 +11,22 @@ export async function POST(request) {
     const logs = [];
     let resultJson = null;
 
+    // Handle both site_url and url parameters
+    const testUrl = body.url || body.site_url;
+    if (!testUrl) {
+      logs.push({ type: 'error', message: 'No URL provided for login test', timestamp: new Date().toISOString() });
+      return NextResponse.json({ 
+        success: false, 
+        error: 'URL is required for login test',
+        logs 
+      }, { status: 400 });
+    }
+
     try {
       resultJson = await runLoginTest({
-        url: body.url,
-        username: body.username,
-        password: body.password,
+        url: testUrl,
+        username: body.username || body.admin_username, // Handle both username formats
+        password: body.password || body.admin_password, // Handle both password formats
         timeout: body.timeout ?? 30000,
         headless: true, // Always run headless
         selectors: body.selectors ?? {
