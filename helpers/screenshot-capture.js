@@ -26,8 +26,8 @@ export async function captureAndUploadScreenshot(url, options = {}) {
     let page = null;
 
     try {
-        // Try different browser launch configurations
-        const launchOptions = {
+        // Launch browser with optimized configuration
+        browser = await chromium.launch({
             headless: true,
             args: [
                 '--no-sandbox',
@@ -39,33 +39,10 @@ export async function captureAndUploadScreenshot(url, options = {}) {
                 '--disable-gpu',
                 '--single-process',
                 '--disable-extensions',
-                '--disable-software-rasterizer',
-                '--font-render-hinting=none' // Reduce font rendering differences
+                '--disable-software-rasterizer'
             ],
             timeout: 60000
-        };
-
-        // Try different browser launch strategies
-        try {
-            // First try: Use system chrome if available
-            browser = await chromium.launch({
-                ...launchOptions,
-                channel: 'chrome'
-            });
-        } catch (err1) {
-            console.log('System Chrome not available, trying bundled browser...');
-            try {
-                // Second try: Use bundled browser with explicit path
-                browser = await chromium.launch({
-                    ...launchOptions,
-                    executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || '/ms-playwright/chromium-1060/chrome-linux/chrome'
-                });
-            } catch (err2) {
-                console.log('Bundled browser failed, trying default launch...');
-                // Final try: Let Playwright handle it
-                browser = await chromium.launch(launchOptions);
-            }
-        }
+        });
 
         // Create context with mobile user agent and reasonable viewport
         context = await browser.newContext({
