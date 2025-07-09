@@ -10,70 +10,59 @@ async function runLoginTest(config) {
   try {
     console.log('🚀 Starting login test...');
     
-    // Launch browser with optimized configuration
     browser = await chromium.launch({
-      headless: config.headless,
+      headless: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
         '--disable-gpu',
-        '--single-process',
-        '--disable-extensions'
-      ],
-      timeout: 60000
+        '--single-process'
+      ]
     });
 
-    // Create context with reasonable viewport and user agent
     context = await browser.newContext({
-      viewport: { width: 1366, height: 768 },
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      bypassCSP: true,
-      ignoreHTTPSErrors: true
+      viewport: { width: 1920, height: 1080 },
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     });
 
     page = await context.newPage();
-    page.setDefaultTimeout(config.timeout);
+    page.setDefaultTimeout(config.timeout || 30000);
 
     console.log(`📍 Navigating to: ${config.url}`);
-    try {
-      await page.goto(config.url, {
-        waitUntil: 'networkidle',
-        timeout: config.timeout
-      });
-    } catch (navError) {
-      console.warn('⚠️ NetworkIdle failed, trying with domcontentloaded...');
-      await page.goto(config.url, {
-        waitUntil: 'domcontentloaded',
-        timeout: config.timeout
-      });
-    }
+    await page.goto(config.url, { waitUntil: 'domcontentloaded' });
 
-    console.log('⏳ Waiting for login form to load...');
-    await page.waitForSelector(config.selectors.username, { state: 'visible', timeout: config.timeout });
-    
-    console.log('📝 Filling in credentials...');
+    console.log('📝 Filling login form...');
+    await page.waitForSelector(config.selectors.username, { state: 'visible' });
     await page.fill(config.selectors.username, config.username);
     await page.fill(config.selectors.password, config.password);
     
     console.log('🔐 Submitting login form...');
     await page.click(config.selectors.submitButton);
 
-    console.log('⏳ Waiting for dashboard to load...');
-    
-    // More reliable dashboard detection
+    // Check for successful login
     try {
-      // First try URL-based detection
       await page.waitForURL('**/wp-admin/**', { timeout: config.timeout / 2 });
-      console.log('✅ URL indicates successful login');
-    } catch (urlError) {
-      // Fallback to visual indicators
-      console.log('⚠️ URL detection failed, checking for dashboard elements...');
-      let dashboardFound = false;
+      console.log('✅ Login successful - Redirected to admin area');
       
+      // Take success screenshot
+      try {
+        const buffer = await page.screenshot({ 
+          fullPage: config.screenshots?.fullPage ?? true,
+          type: 'jpeg',
+          quality: 80
+        });
+        screenshotBase64 = buffer.toString('base64');
+        resultType = 'Success';
+      } catch (screenshotError) {
+        console.warn('Warning: Could not capture success screenshot:', screenshotError.message);
+      }
+      
+      return { success: true, screenshotBase64, resultType };
+      
+    } catch (urlError) {
+      // Check for dashboard elements if URL check fails
+      let dashboardFound = false;
       for (const selector of config.selectors.dashboardIndicators) {
         try {
           await page.waitForSelector(selector, { 
@@ -81,74 +70,62 @@ async function runLoginTest(config) {
             timeout: config.timeout / 2
           });
           dashboardFound = true;
-          console.log(`✅ Dashboard indicator found: ${selector}`);
           break;
         } catch (selectorError) {
-          console.log(`⚠️ Dashboard indicator not found: ${selector}`);
+          continue;
         }
       }
 
       if (!dashboardFound) {
-        throw new Error('Could not detect WordPress dashboard');
+        throw new Error('Login failed - Could not detect WordPress dashboard');
       }
+      
+      console.log('✅ Login successful - Dashboard elements detected');
+      
+      // Take success screenshot
+      try {
+        const buffer = await page.screenshot({ 
+          fullPage: config.screenshots?.fullPage ?? true,
+          type: 'jpeg',
+          quality: 80
+        });
+        screenshotBase64 = buffer.toString('base64');
+        resultType = 'Success';
+      } catch (screenshotError) {
+        console.warn('Warning: Could not capture success screenshot:', screenshotError.message);
+      }
+      
+      return { success: true, screenshotBase64, resultType };
     }
-
-    console.log('✅ Login test passed - WordPress Dashboard loaded successfully!');
-    
-    // Hide any cookie notices or popups before screenshot
-    await page.addStyleTag({
-      content: `
-        .cookie-banner, .cookie-notice, .gdpr-banner, 
-        .privacy-notice, .consent-banner, .popup-overlay { 
-          display: none !important; 
-        }
-      `
-    });
-
-    // Wait a bit for any animations to complete
-    await page.waitForTimeout(1000);
-
-    const buffer = await page.screenshot({ 
-      fullPage: config.screenshots.fullPage,
-      type: 'jpeg',
-      quality: 80
-    });
-    screenshotBase64 = buffer.toString('base64');
-    resultType = 'Success';
-    
-    return { success: true, screenshotBase64, resultType };
   } catch (error) {
-    console.error('❌ Login test failed');
-    console.error('Error details:', error.message);
+    console.error('❌ Login test failed:', error.message);
     
+    // Try to capture error state
     try {
-      // Attempt to capture error state
-      const buffer = await page?.screenshot({ 
-        fullPage: config.screenshots.fullPage,
-        type: 'jpeg',
-        quality: 80
-      });
-      screenshotBase64 = buffer.toString('base64');
-      resultType = 'Failure';
+      if (page) {
+        const buffer = await page.screenshot({ 
+          fullPage: config.screenshots?.fullPage ?? true,
+          type: 'jpeg',
+          quality: 80
+        });
+        screenshotBase64 = buffer.toString('base64');
+        resultType = 'Failure';
+      }
     } catch (screenshotError) {
-      console.error('Failed to capture error screenshot:', screenshotError.message);
+      console.warn('Warning: Could not capture error screenshot:', screenshotError.message);
     }
     
     return { 
-      success: false, 
-      screenshotBase64, 
+      success: false,
+      screenshotBase64,
       resultType,
       error: error.message 
     };
   } finally {
-    console.log('🧹 Cleaning up browser resources...');
-    try {
-      if (page) await page.close();
-      if (context) await context.close();
-      if (browser) await browser.close();
-    } catch (cleanupError) {
-      console.warn('Cleanup warning:', cleanupError.message);
-    }
+    console.log('🧹 Cleaning up...');
+    if (page) await page.close();
+    if (context) await context.close();
+    if (browser) await browser.close();
   }
 }
 

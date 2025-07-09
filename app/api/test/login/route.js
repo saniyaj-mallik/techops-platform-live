@@ -8,16 +8,16 @@ export async function POST(request) {
   try {
     await connectDB();
     const { headless = true, ...body } = await request.json();
-    // Run the Playwright login test directly (no child process)
     const logs = [];
     let resultJson = null;
+
     try {
       resultJson = await runLoginTest({
         url: body.url,
         username: body.username,
         password: body.password,
         timeout: body.timeout ?? 30000,
-        headless,
+        headless: true, // Always run headless
         selectors: body.selectors ?? {
           username: '#user_login',
           password: '#user_pass',
@@ -29,9 +29,16 @@ export async function POST(request) {
       logs.push({ type: 'info', message: 'Login test executed', timestamp: new Date().toISOString() });
     } catch (testError) {
       logs.push({ type: 'error', message: 'Login test error: ' + testError.message, timestamp: new Date().toISOString() });
+      return NextResponse.json({ 
+        success: false, 
+        error: testError.message,
+        logs 
+      });
     }
+
+    // Handle screenshot upload if available
     let dbResult = null;
-    if (resultJson && resultJson.screenshotBase64) {
+    if (resultJson.screenshotBase64) {
       try {
         const uploadResult = await uploadImageToCloudinary(resultJson.screenshotBase64, `login-${resultJson.resultType.toLowerCase()}`);
         dbResult = await TestResult.create({
@@ -42,21 +49,24 @@ export async function POST(request) {
           size: uploadResult.size,
           meta: { cloudinary: uploadResult.meta }
         });
-        return NextResponse.json({
-          success: resultJson.success,
-          imageUrl: uploadResult.imageUrl,
-          publicId: uploadResult.publicId,
-          dbId: dbResult._id,
-          logs,
-        });
+        logs.push({ type: 'info', message: 'Screenshot uploaded successfully', timestamp: new Date().toISOString() });
       } catch (cloudError) {
-        logs.push({ type: 'error', message: 'Cloudinary upload error: ' + cloudError.message, timestamp: new Date().toISOString() });
-        return NextResponse.json({ success: false, error: cloudError.message, logs });
+        logs.push({ type: 'warning', message: 'Screenshot upload failed: ' + cloudError.message, timestamp: new Date().toISOString() });
+        // Continue without screenshot - don't fail the test just because screenshot failed
       }
-    } else {
-      logs.push({ type: 'error', message: 'No screenshot data found. resultJson: ' + JSON.stringify(resultJson), timestamp: new Date().toISOString() });
-      return NextResponse.json({ success: false, error: 'No screenshot data', logs, debug: { resultJson } });
     }
+
+    // Return response with or without screenshot data
+    return NextResponse.json({
+      success: resultJson.success,
+      ...(dbResult && {
+        imageUrl: dbResult.imageUrl,
+        publicId: dbResult.publicId,
+        dbId: dbResult._id,
+      }),
+      logs,
+    });
+
   } catch (error) {
     return NextResponse.json({
       success: false,
