@@ -26,9 +26,10 @@ export async function captureAndUploadScreenshot(url, options = {}) {
     let page = null;
 
     try {
-        // Launch browser
+        // Launch browser with more resilient configuration
         browser = await chromium.launch({
             headless: true,
+            executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -36,14 +37,20 @@ export async function captureAndUploadScreenshot(url, options = {}) {
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
                 '--no-zygote',
-                '--disable-gpu'
-            ]
+                '--disable-gpu',
+                '--single-process',  // Run browser in single process mode
+                '--disable-extensions',
+                '--disable-software-rasterizer'
+            ],
+            timeout: 60000  // 60 second timeout for browser launch
         });
 
         // Create context with mobile user agent and reasonable viewport
         context = await browser.newContext({
             viewport: { width: 1920, height: 1080 },
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            bypassCSP: true,  // Bypass Content Security Policy
+            ignoreHTTPSErrors: true  // Ignore HTTPS errors
         });
 
         // Create page
