@@ -1,21 +1,33 @@
 import { NextResponse } from 'next/server';
 import { getCorsHeaders } from './lib/cors-config.js';
 
-// CORS configuration
-export function middleware(req) {
-    const headers = new Headers();
+export function middleware(request) {
+  // Handle CORS for all API routes
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    const origin = request.headers.get('origin');
+    const corsHeaders = getCorsHeaders(origin);
     
-    // Allow requests from any domain
-    headers.set('Access-Control-Allow-Origin', '*');
-    headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-        return new Response(null, { headers });
+    // Handle preflight OPTIONS requests
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 200,
+        headers: corsHeaders,
+      });
     }
+
+    // Continue to the API route
+    const response = NextResponse.next();
     
-    return headers;
+    // Add CORS headers to all API responses
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    
+    return response;
+  }
+
+  // For non-API routes, continue without modification
+  return NextResponse.next();
 }
 
 export const config = {
