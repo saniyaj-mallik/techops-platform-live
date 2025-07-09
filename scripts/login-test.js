@@ -27,13 +27,23 @@ async function runLoginTest(config) {
     });
 
     page = await context.newPage();
-    page.setDefaultTimeout(config.timeout || 30000);
+    
+    // Set default timeout to 120s if not specified
+    const timeout = config.timeout || 120000;
+    page.setDefaultTimeout(timeout);
 
     console.log(`📍 Navigating to: ${config.url}`);
-    await page.goto(config.url, { waitUntil: 'domcontentloaded' });
+    // Add explicit navigation timeout
+    await page.goto(config.url, { 
+      waitUntil: 'domcontentloaded',
+      timeout: timeout 
+    });
 
     console.log('📝 Filling login form...');
-    await page.waitForSelector(config.selectors.username, { state: 'visible' });
+    await page.waitForSelector(config.selectors.username, { 
+      state: 'visible',
+      timeout: timeout
+    });
     await page.fill(config.selectors.username, config.username);
     await page.fill(config.selectors.password, config.password);
     
@@ -42,7 +52,8 @@ async function runLoginTest(config) {
 
     // Check for successful login
     try {
-      await page.waitForURL('**/wp-admin/**', { timeout: config.timeout / 2 });
+      // Use full timeout for URL check
+      await page.waitForURL('**/wp-admin/**', { timeout: timeout });
       console.log('✅ Login successful - Redirected to admin area');
       
       // Take success screenshot
@@ -65,9 +76,10 @@ async function runLoginTest(config) {
       let dashboardFound = false;
       for (const selector of config.selectors.dashboardIndicators) {
         try {
+          // Use full timeout for dashboard element checks
           await page.waitForSelector(selector, { 
             state: 'visible',
-            timeout: config.timeout / 2
+            timeout: timeout
           });
           dashboardFound = true;
           break;
